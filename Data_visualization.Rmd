@@ -1,0 +1,32 @@
+---
+title: "Data Visualization"
+author: "Rachel Fellman"
+date: "2024-07-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+Read in the data:
+I will be saving our data in a data frame named patients.
+```{r}
+patients <- read.csv("dataset.csv")
+patients
+```
+
+# Data visualization
+
+## 
+
+
+
+
+
+
+
+
+
+
