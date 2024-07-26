@@ -56,7 +56,7 @@ The distribution of max blood pressures appears to be relatively normal.
 
 ## plot 3
 
-patient ethnicity vs diabetes instances
+patient ethnicity vs hospital death
 ```{r}
 table(patients$ethnicity, patients$hospital_death)
 ```
