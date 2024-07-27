@@ -28,6 +28,8 @@ The following information comes directly from the Kaggle site for this data but 
 - apache_2_diagnosis: The APACHE II diagnosis for the ICU admission
 
 
+
+
 - encounter_id: Unique identifier associated with a patient unit stay 
 - patient_id: Unique identifier associated with a patient
 - hospital_id: Unique identifier associated with a hospital
