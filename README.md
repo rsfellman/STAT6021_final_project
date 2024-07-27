@@ -21,7 +21,7 @@ This data uses the APACHE III score which "is widely used to assess illness seve
 ## Variables
 The following information comes directly from the Kaggle site for this data but it repeated here for ease of use and understanding.  
 
-
+## response
 - apache_4a_hospital_death_prob: The APACHE IVa probabilistic prediction of in-hospital mortality for the patient which utilizes the APACHE III score and
 - apache_4a_icu_death_prob: The APACHE IVa probabilistic prediction of in ICU mortality for the patient which utilizes the APACHE III score and
 - hospital_death: Whether the patient died during this hospitalization
@@ -29,7 +29,7 @@ The following information comes directly from the Kaggle site for this data but 
 
 
 
-
+## predictor
 - encounter_id: Unique identifier associated with a patient unit stay 
 - patient_id: Unique identifier associated with a patient
 - hospital_id: Unique identifier associated with a hospital
