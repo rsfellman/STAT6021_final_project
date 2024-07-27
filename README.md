@@ -8,9 +8,11 @@
 - Riya Pulla
 
 # Purpose
-The purpose of this project is to represent our ability as data scientists to find interesting data sets, pose research questions, explore data using summary statistics and visualizations and build linear prediciton models.
+The purpose of this project is to represent our ability as data scientists to find interesting data sets, pose research questions, explore data using summary statistics and visualizations and build linear prediciton models.  
+
 
 # Data
+It should be noted that we don't know what purpose this data was collected for, and therefore any predictions made from said data may be skewed.  
 The data comes from Kaggle, and can be accessed via the following link.  
 [dataset](https://www.kaggle.com/datasets/mitishaagarwal/patient/data)  
 This data contains data from patient hospitalization and is used to predict whether a patient will survive or not.  
