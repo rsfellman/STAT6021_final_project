@@ -8,73 +8,94 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(caret)
+library(modeldata)
 ```
 
-Read in the data:
-I will be saving our data in a data frame named patients.
+Clean data
 ```{r}
-patients <- read.csv("dataset.csv")
-patients
+data("hotel_rates")
+
+#change certain rows to factors
+myhotel<- hotel_rates %>% 
+  mutate(is_repeated_guest = as.factor(is_repeated_guest), previous_cancellations,
+         near_christmas = as.factor(near_christmas),
+         near_new_years = as.factor(near_new_years)) %>% 
+  #take out historical_adr variable since it is not part of the original data
+  select(-"historical_adr")
+
 ```
 
 # Data visualization
 
-##  plot 1:
-First filter data to remove negative 1 probabilites which are representing missing values.
+
+ggplot(myhotel) aes(x = lead_time, y = avg_price_per_room)) + 
+  geom_point(aes(color = as.factor(is_repeated_guest)))+
+  scale_fill_discrete(name = "Is Repeated Guest?", labels = c("No","Yes"))
+
+# plot 1
+
+Scatter plot of `avg_price_per_room` vs `lead_time` (Number of days that elapsed between the entering date of the booking into the PMS and the arrival date) colored by `customer_type`.
 ```{r}
-patients2 <- gsub(-1, NA , patients$apache_4a_icu_death_prob )
-patients$apache_4a_icu_death_prob = patients2
+#make base plot
+g<- ggplot(myhotel, aes(x = lead_time, y = avg_price_per_room))
+#add layers
+g+ geom_point(aes(color = customer_type))+
+  labs(x = "lead time (days)", y = "Average Room Price (euros)")
+  
 
 ```
 
-
-```{r}
-patients3 <- patients %>% 
-  drop_na(apache_4a_icu_death_prob)
-```
-
-Scatterplot of age vs apache_4a_hospital_death_prob colored by gender
-```{r}
-ggplot(patients3, aes(x = age, y = apache_4a_icu_death_prob)) + geom_jitter(aes(color = as.factor(gender)))+
-  scale_y_discrete(
-    breaks = seq(0, 1, by = 0.1)  # Adjust the breaks on the y-axis
-  )
-```
-
-This plots a scatter plot of patient age against the apache IV ICU death probability colored by gender. There appears to be a random scatter of genders. There are however more older people with higher scores than younger people. This could be because older people are more prone to disease or are more likely to have a weakened immune system, or it could be because there are more older people who are admitted to the hospital.
+This is a scatter plot of average room rate in euros compared to the number of days between entering the date of booking into the system and the guest's arrival date. The points are colored by customer type. It appears that the majority of bookings are transient meaning they are not associated with a group or contract. From this plot we can see that there is a slightly negative relationship between lead time and room rate.
 
 
 ## plot 2
-
-histogram of  maximum diastolic blood pressure the first 24 hours of their unit stay.
+bar graph of `room_type` colored by `market_segment`
 ```{r}
-ggplot(patients, aes(x = d1_diasbp_max)) + geom_histogram(fill = "blue") +
-  xlab("maximum diastolic blood pressure")
+#define base plot
+g<- ggplot(myhotel, aes(x = reserved_room_type))
+ g+ geom_bar(aes(fill= market_segment))+
+  labs(x = "Room type")
 ```
-The distribution of max blood pressures appears to be relatively normal.
+There appears to be a much higher count of room type a than any of the other room types. Due to the necessity of anonymity, we do not have access to what room type a is. From this graph, it also seems that the majority of all room types are from online travel agents.
 
 
 ## plot 3
 
-patient ethnicity vs hospital death
-```{r}
-table(patients$ethnicity, patients$hospital_death)
-```
 
-plot ethnicity vs hospital death
+Boxplot of `stays_in_week_nights` by `meal`
 
 ```{r}
-ggplot(patients, aes(x=ethnicity)) + geom_bar(aes(fill = as.factor(hospital_death)), position = "fill")
-```
-Although we already looked at a bar graph of ethnicity, here we can see the percent of deaths by ethnicity. When it is all standardized there appears to be little difference in the percent of hospital deaths from one ethnicity to another. We could interpret this as there being few differences in hospital care between race (which is a good thing), however there are many other factors to consider before making a conclusion.
-
-
-## plot 4
-diabetes vs age
-
-
-```{r}
-ggplot(patients, aes(x = age)) +geom_density(adjust = 0.5, alpha = 0.5, aes(fill = as.factor(diabetes_mellitus)))
+g <- ggplot(myhotel, aes(x = meal, y = stays_in_week_nights))
+g + geom_boxplot(fill = "blue")
 ```
 
-This shows the smoothed distribution of age for patients with and without diabetes. Age appears to be left skewed for patients with an without diabetes. We can see that between about ages 65 and 75 there is a higher density of patients with diabetes than without. 
+From these boxplots we can see there is little difference in the median length of stay for weeknight guests among the different meal packages. The distributions among the boxplots look similar. However, there are clearly a few outliers for the bed_and_breakfast and the bed_and_breakfast_and_one_other_meal categories, so those two distributions may be slightly right skewed.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
