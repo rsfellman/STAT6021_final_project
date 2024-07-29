@@ -1,3 +1,4 @@
+
 # Predicting Hotel Room Rates 
 
 ## Contributors
@@ -33,4 +34,5 @@ data("hotel_rates")
 
 
 # Works Cited
+
 
