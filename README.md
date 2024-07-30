@@ -23,7 +23,8 @@ The data can be accesed using the following R code if you already have the neces
 library(modeldata)
 data("hotel_rates")
 ```
-More information on the data used can be found at the following links. 
+More information on the data used can be found at the following links:  
+
 [Hotel Booking Demand Datasets](https://www.sciencedirect.com/science/article/pii/S2352340918315191#f0010)  
 [Hotels](https://github.com/rfordatascience/tidytuesday/tree/master/data/2020/2020-02-11)
 
