@@ -28,7 +28,7 @@ More information on the data used can be found at the following links:
 [Hotel Booking Demand Datasets](https://www.sciencedirect.com/science/article/pii/S2352340918315191#f0010)  
 [Hotels](https://github.com/rfordatascience/tidytuesday/tree/master/data/2020/2020-02-11)
 
-For our purposes we removed the historical.adr
+For our purposes we removed the `historical_adr` variable from the R dataset since it does not appear to be part of the original data.
 
 ## Variables
 The information on the following variables was found at the above links.
