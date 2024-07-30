@@ -11,20 +11,22 @@ library(tidyverse)
 library(caret)
 library(modeldata)
 library(corrplot)
+library(MASS)
 ```
 
 Clean data
 ```{r}
 data("hotel_rates")
-
+hotel_rates
+```
+```{r}
 #change certain rows to factors
 myhotel<- hotel_rates %>% 
   mutate(is_repeated_guest = as.factor(is_repeated_guest), previous_cancellations,
          near_christmas = as.factor(near_christmas),
          near_new_years = as.factor(near_new_years)) %>% 
-  #take out historical_adr variable since it is not part of the original data
-  select(-"historical_adr")
-
+      #take out historical_adr variable since it is not part of the original data
+  dplyr::select(- historical_adr)
 ```
 
 # Data visualization
@@ -67,12 +69,20 @@ There appears to be a much higher count of room type a than any of the other roo
 Boxplot of `stays_in_week_nights` by `meal`
 
 ```{r}
-g <- ggplot(myhotel, aes(x = meal, y = stays_in_week_nights))
+g <- ggplot(myhotel, aes(x = meal, y = avg_price_per_room))
 g + geom_boxplot(fill = "blue")
 ```
 
-From these boxplots we can see there is little difference in the median length of stay for weeknight guests among the different meal packages. The distributions among the boxplots look similar. However, there are clearly a few outliers for the bed_and_breakfast and the bed_and_breakfast_and_one_other_meal categories, so those two distributions may be slightly right skewed.
+From these boxplots we can see the average room price is affected by the type of meal packages selected by the customer. This makes sense since the room charge includes the meals.
 
+
+# plot 4
+scatterplot of arrival date vs avg_price_per_room colored by room type.
+```{r}
+g<- ggplot(myhotel)
+g+geom_jitter(aes(y = avg_price_per_room, x = arrival_date_num, color = assigned_room_type))
+```
+The relationship between avg_price_per_room and arrival_date does not appear to be linear, but rather is quadratic. It's hard to say without knowing a lot about the hotel business and tourism why room prices were generally lower in the beginning of 2017 versus other times. We can also see from this graph that certain room types are consistently higher priced than others, so room type is likely a good predictor of price.
 
 
 
@@ -128,6 +138,10 @@ We will try transforming the data  with a log transformation to better meet the 
 hotel2 <- mutate(myhotel, avg_price_per_room = log(avg_price_per_room))
 ```
 
+
+
+
+
 ```{r}
 #fit model again with log transformed data
 model2<- lm(avg_price_per_room~., data = hotel2)
@@ -154,36 +168,40 @@ ggplot(hotel2.pred, aes(sample= resid))+stat_qq() +stat_qq_line()
 Since the points in the qq plot follow the diagonal line, we have met the normal population assumption.
 
 
-# remove data that is not stat sig (variable selection)
+
+
+
+# variable selection using stepAIC function
+
+We will do direction = both to use both forward and backwards selection
+```{r}
+aic <- stepAIC(model2, direction = "both")
+```
+```{r}
+summary(aic)
+```
+
+Our final model when using aic variable selection is:  
+avg_price_per_room ~ lead_time + stays_in_week_nights + 
+    adults + children + babies + meal + country + market_segment + 
+    distribution_channel + is_repeated_guest + previous_cancellations + 
+    reserved_room_type + assigned_room_type + agent + customer_type + 
+    required_car_parking_spaces + total_of_special_requests + 
+    arrival_date + near_christmas + near_new_years
+    
+This model has an adjusted R^2 of .5206
+
+
+# model with all variables
 ```{r}
 summary(model2)
 ```
-
-
-```{r}
-hotel3 <- hotel2 %>% 
-  select(-babies, -stays_in_week_nights, -stays_in_weekend_nights, -country)
-```
+Our model with all the variables present has an r^2 of .5254.
+This is higher than the model chosen with forward and backwards selection so perhaps this is a better model.
 
 
 
-
-```{r}
-model4 <- lm(avg_price_per_room~., data = hotel3)
-```
-
-
-```{r}
-summary(model4)
-```
-
-
-
-
-
-
-
-#fit models
+#fit models using carat package
 
 ```{r}
 #make train and test set
@@ -216,6 +234,8 @@ fit.lasso <- train(avg_price_per_room ~ .,
                    data= trainData,
                    #select glmnet method
                    method= "glmnet",
+                   #train control
+                   train_control = train_control,
                    #calculate rmse metric
                    metric= "RMSE",
                    #add tuning parameters
@@ -226,19 +246,34 @@ fit.lasso <- train(avg_price_per_room ~ .,
 ```{r}
 fit.lasso$finalModel$xNames
 ```
+When we look at the final model for our lasso model, all of the predictors are also present.
+
+
 
 ```{r}
 predictions_lasso <- fit.lasso %>% predict(testData)
 ```
+
+#get r^2 for lasso model
 ```{r}
- Lasso_R2 = R2(predictions_lasso, testData)
+Lasso_R2 = R2(predictions_lasso, testData$avg_price_per_room)
+Lasso_R2
 ```
 
+When we get the r^2 value for the lasso model when used on our test set, we get a value of .5062294. This is lower than our other 2 models.
+
+
+For our final model we will chose to include all the predictor variables
 
 
 
 
 
+
+
+```{r}
+levels(myhotel$meal)
+```
 
 
 
