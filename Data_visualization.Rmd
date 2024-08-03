@@ -154,6 +154,7 @@ hotel2.pred <- mutate(hotel2, pred = fitted(model2), resid = residuals(model2))
 
 ```{r}
 #make residual plot
+
 ggplot(hotel2.pred, aes(x=pred, y = resid))+geom_point()+geom_hline(yintercept = 0, color = "red")
 ```
 
