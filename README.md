@@ -1,7 +1,7 @@
 
 # Predicting Hotel Room Rates 
 
-## Contributors
+# Contributors
 - Rachel Fellman
 - Bernard Gonzales
 - Ashley Huang
@@ -9,7 +9,7 @@
 - Riya Pulla
 
 # Purpose
-The purpose of this project is to represent our ability as data scientists to find interesting data sets, pose research questions, explore data using summary statistics and visualizations and build linear prediciton models.  
+The purpose of this project is to represent our ability as data scientists to find interesting data sets, pose research questions, explore data using summary statistics and visualizations and build linear and logistic prediciton models.  
 
 # Required Packages
 `tidyverse`  
@@ -35,10 +35,10 @@ For our purposes we removed the `historical_adr` variable from the R dataset sin
 
 ## Variables
 The information on the following variables was found at the above links.
-## response
+## Response
 **avg_price_per_room**: average daily rate (in euros) defined by dividing the sum of all lodging transactions by the total number of staying nights.  
 
-## predictors
+## Predictors
 - **lead_time**: Number of days that elapsed between the entering date of the booking into the PMS and the arrival date
 - **stays_in_weekend_nights**: Number of weekend nights (Saturday or Sunday) the guest stayed or booked to stay at the hotel
 - **stays_in_week_nights**:Number of week nights (Monday to Friday) the guest stayed or booked to stay at the hotel
