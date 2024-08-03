@@ -69,4 +69,6 @@ The information on the following variables was found at the above links.
 - **near_christmas** : Is the booking near Christmas (1) or not (0)
 - **near_new_years**: Is the booking near New Years (1) or not (0)
 
-
+# Presentation
+Our presentation can be viewed at the following link:  
+[slides](https://docs.google.com/presentation/d/1B4yID3-5PcpYNEUQzN1U6oMjXKhx4ZJGJoawyiV4sSM/edit?usp=sharing)
