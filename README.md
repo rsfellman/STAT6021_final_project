@@ -15,7 +15,8 @@ The purpose of this project is to represent our ability as data scientists to fi
 `tidyverse`  
 `glmnet`  
 `caret`  
-`ggcorrplot`  
+`ggcorrplot`
+`modeldata`
 
 # Data
 This data was collected from hotels in Portugal, with the aim of creating prediction models. Because this is real data from hotels, all identifying information for hotels and customers has been removed from the data.
