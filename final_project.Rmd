@@ -1,0 +1,185 @@
+---
+title: "Project_EDA"
+output: html_document
+date: "2024-07-28"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### load libraries
+
+```{r}
+library(tidyverse)
+library(modeldata)
+library(ggExtra)
+library(car)
+library(MASS)
+library(broom)
+library(caret)
+library(glmnet)
+library(pls)
+```
+
+### Basic cleaning
+
+```{r}
+# basic cleaning (might be unnecessary)
+
+hotel_rates$is_repeated_guest <- as.factor(hotel_rates$is_repeated_guest)
+
+hotel_rates$near_christmas <- as.factor(hotel_rates$near_christmas)
+hotel_rates$near_new_years <- as.factor(hotel_rates$near_new_years)
+```
+
+### EDA
+
+```{r}
+# days in waiting list vs. special requests num
+
+ggplot(hotel_rates, aes(x=customer_type, y=avg_price_per_room, fill=customer_type)) +
+  geom_boxplot() + 
+  labs(x="Customer type", y="Average Price", title="Boxplot of Customer Types and Average Price") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+hotel_rates %>%
+  group_by(is_repeated_guest) %>%
+  summarise(avg_price_by_guest = mean(avg_price_per_room))
+
+ggplot(hotel_rates, aes(x=is_repeated_guest, y=avg_price_per_room)) +
+  geom_jitter(alpha=0.1, color="blue") +
+  geom_boxplot(outlier.color="red") +
+  labs(x="Repeat Guest", y="Average Room Price", title="Barplot of Repeat Customers and Room Price") + 
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+avg_room_price_week <- hotel_rates %>%
+  group_by(stays_in_week_nights) %>%
+  summarize(room_price_by_week = mean(avg_price_per_room))
+
+ggplot(avg_room_price_week, aes(x=stays_in_week_nights, y=room_price_by_week)) +
+  geom_bar(stat="identity", fill="blue") +
+  labs(x="Stays in Week Nights", y="Average Room Price", title="Barplot of week nights and room price") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r}
+
+avg_room_price_weekend <- hotel_rates %>%
+  group_by(stays_in_weekend_nights) %>%
+  summarize(room_price_by_weekend = mean(avg_price_per_room))
+
+ggplot(avg_room_price_weekend, aes(x=stays_in_weekend_nights, y=room_price_by_weekend)) +
+  geom_bar(stat="identity", fill="magenta") +
+  labs(x="Stays in Weekend Nights", y="Average Room Price", title="Barplot of weekend nights and room price") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Change to julian time
+
+
+```{r}
+hotel_df <- hotel_rates %>%
+  mutate(julian_date = yday(arrival_date)) %>%
+  dplyr::select(-c(historical_adr, arrival_date))
+```
+
+### Model Selection
+
+#### classic lm function (global F-test and individual T-tests)
+
+```{r}
+model1 <- lm(avg_price_per_room~., data=hotel_df)
+#summary(hotel_model)
+```
+
+#### Stepwise regression
+
+```{r}
+stepwise_reg <- MASS::stepAIC(model1, direction="both", Trace=F)
+```
+
+```{r}
+# stepwise regression model 
+
+model2 <- lm(avg_price_per_room ~ stays_in_week_nights + adults + children + 
+    meal + country + market_segment + distribution_channel + 
+    is_repeated_guest + previous_cancellations + reserved_room_type + 
+    assigned_room_type + booking_changes + agent + customer_type + 
+    required_car_parking_spaces + total_of_special_requests + 
+    arrival_date_num + near_christmas + near_new_years + julian_date, data=hotel_df)
+#summary(model2)
+```
+### VIF analysis
+
+```{r}
+vif(model2)
+```
+
+```{r}
+# Addressing assumptions with residual plots and qqplots 
+
+hotel_df_fitted <- mutate(hotel_df, predictions=fitted(model2), 
+                          resid=residuals(model2))
+
+ggplot(hotel_df_fitted, aes(x=predictions, y=resid)) + # manual residual plot 
+  geom_point() +
+  geom_hline(yintercept=0, color="red")
+
+ggplot(hotel_df_fitted, aes(sample=resid)) +  # manual qqplot
+  stat_qq() +
+  stat_qq_line(color="red")
+```
+
+### Response Variable Transformation
+
+```{r}
+hotel_df2 <- mutate(hotel_df, t_price = log10(avg_price_per_room))
+
+model3 <- lm(t_price ~ stays_in_week_nights + adults + children + 
+    meal + country + market_segment + distribution_channel + 
+    is_repeated_guest + previous_cancellations + reserved_room_type + 
+    assigned_room_type + booking_changes + agent + customer_type + 
+    required_car_parking_spaces + total_of_special_requests + 
+    arrival_date_num + near_christmas + near_new_years + julian_date, data=hotel_df2)
+
+summary(model3)
+```
+
+```{r}
+hotel_df_fitted2 <- mutate(hotel_df2, predictions=fitted(model3), 
+                          resid=residuals(model3))
+
+ggplot(hotel_df_fitted2, aes(x=predictions, y=resid)) + # manual residual plot 
+  geom_point() +
+  geom_hline(yintercept=0, color="red")
+
+
+ggplot(hotel_df_fitted2, aes(sample=resid)) +  # manual qqplot
+  stat_qq() +
+  stat_qq_line(color="red")
+```
+
+#### Ridge
+
+```{r}
+x <- model.matrix(avg_price_per_room~0+., data=hotel_df)
+y <- hotel_df$avg_price_per_room
+
+ridge_model <- glmnet(x=x, y=y, alpha=0)
+
+kcv_glmnet <- cv.glmnet(x=x, y=y, alpha=0, nfolds=10)
+kcv_glmnet$lambda.1se
+
+plot(ridge_model, label=T, xvar="lambda") + abline(v=log(kcv_glmnet$lambda.1se))
+```
+
+### Model Metrics
