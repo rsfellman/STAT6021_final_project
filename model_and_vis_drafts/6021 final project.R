@@ -5,7 +5,7 @@ view(hotel_rates)
 ggplot(hotel_rates, aes(x = avg_price_per_room)) + 
   geom_histogram(binwidth = 50, fill = 'blue', color = 'black') + 
   theme_minimal() + 
-  labs(title = "Average Price per Room", x = "Price", y = "Count")
+  labs(title = "Histogram of Average Price per Room", x = "Price", y = "Count")
 
 ggplot(hotel_rates, aes(x = country, y = avg_price_per_room)) + 
   geom_boxplot(fill = 'lightblue', color = 'black') + 

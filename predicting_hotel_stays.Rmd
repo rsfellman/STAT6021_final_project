@@ -1,0 +1,222 @@
+---
+title: "Predicting Hotel Stays"
+author: "Rachel Fellman, Bernard Gonzales, Ashley Huang, Léa Runesha, & Riya Pulla"
+date: "2024-08-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Import Required Libraries
+```{r}
+library(tidyverse)
+library(modeldata)
+
+library(car)
+library(MASS)
+library(broom)
+library(caret)
+library(glmnet)
+library(pls)
+```
+
+# Data
+
+## Get Data
+```{r}
+data("hotel_rates")
+```
+
+## Clean Data
+```{r}
+
+#change certain rows to factors
+myhotel<- hotel_rates %>% 
+  mutate(is_repeated_guest = as.factor(is_repeated_guest),
+         near_christmas = as.factor(near_christmas),
+         near_new_years = as.factor(near_new_years)) %>% 
+      #take out historical_adr variable since it is not part of the original data
+  dplyr::select(- historical_adr)
+```
+
+
+# Research Questions
+1. What demographics, such as country of origin, number of adults/children/babies/etc, affect how long guests stay in a hotel? 
+
+2. Does the price affect if an individual will become a repeat guest or not?  
+
+3. Does the market segment, the method used to book a hotel, affect the price, holding everything else constant?  
+
+
+
+# Exploratory Data Analysis
+
+
+## Repeat Customers
+
+```{r}
+# summar
+hotel_rates %>%
+  group_by(is_repeated_guest) %>%
+  summarise(avg_price_by_guest = mean(avg_price_per_room))
+
+ggplot(myhotel, aes(x=is_repeated_guest, y=avg_price_per_room)) +
+  geom_jitter(alpha=0.1, color="blue") +
+  geom_boxplot(outlier.color="red") +
+  labs(x="Repeat Guest", y="Average Room Price", title="Boxplot of Repeat Customers and Room Price") + 
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+This boxplot helps us answer the research question regarding price and repeated guests. Here we can see that in general repeated guests have lower room costs than new guests. This could be because the hotels offer some sort of reward program for returning guests. It is difficult to say why but there is clearly some relationship between average hotel room price and returning guests.
+
+
+To investigate further we looked at if room type could be the cause of the different prices for returning and new guests
+```{r}
+# repeat guest colored by room type 
+g <- ggplot(myhotel, aes(x = assigned_room_type, y = avg_price_per_room)) # Create the ggplot object
+# Add a bar plot with the average price as the y variable, colored by repeat guest status
+g + stat_summary(fun = mean, geom = "bar", aes(fill = is_repeated_guest), position = "dodge") +
+  labs(x = "Assigned Room Type", y = "Average Price per Room", title = "Average Price for Each Room Type Colored By Repeat Guest Status")
+
+```
+
+From this graph we can see that even though certain room types do tend to have different prices, across the  majority of room types the average room price still tends to be lower for repeated guests than not guests. 
+
+We have to take into account here that because this is real data, it has been anonymized and we don't know what the actual room types are so unfortunately we have lost some of the interpretability. However, from basic knowledge of hotels, typically suites or larger rooms with better views tend to cost more.
+
+
+
+## Room Price and Time
+
+Scatter plot of `avg_price_per_room` vs `lead_time` (Number of days that elapsed between the entering date of the booking into the PMS and the arrival date) colored by `customer_type`.
+```{r}
+#make base plot
+g<- ggplot(myhotel, aes(x = lead_time, y = avg_price_per_room))
+#add layers
+g+ geom_point(aes(color = customer_type))+
+  labs(x = "lead time (days)", y = "Average Room Price (euros)")
+  
+```
+This is a scatter plot of average room rate in euros compared to the number of days between entering the date of booking into the system and the guest's arrival date. The points are colored by customer type. It appears that the majority of bookings are transient meaning they are not associated with a group or contract. From this plot we can see that there is a slightly negative relationship between lead time and room rate.
+
+
+
+scatterplot of arrival date vs avg_price_per_room colored by room type.
+```{r}
+g<- ggplot(myhotel)
+g+geom_jitter(aes(y = avg_price_per_room, x = arrival_date_num, color = assigned_room_type))
+```
+The relationship between avg_price_per_room and arrival_date does not appear to be linear, but rather is quadratic. It's hard to say without knowing a lot about the hotel business and tourism why room prices were generally lower in the beginning of 2017 versus other times. We can also see from this graph that certain room types are consistently higher priced than others, so room type is likely a good predictor of price. Our model would likely be improved if we squared the arrival_date_num variable, but for the purpose of this class (linear models) we are chosing not to add a squared term.
+
+
+
+```{r}
+#aggregate the data
+avg_room_price_week <- hotel_rates %>%
+  group_by(stays_in_week_nights) %>%
+  summarize(room_price_by_week = mean(avg_price_per_room))
+
+ggplot(avg_room_price_week, aes(x=stays_in_week_nights, y=room_price_by_week)) +
+  geom_point(color="blue") +
+  labs(x="Stays in Week Nights", y="Average Room Price", title="Scatterplot of week nights and room price") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+From this scatter plot of aggregated data, we can see the generally negative relationship between the number of stays in week nights and the average room price. This could be because hotels provide a discount if a customer books more nights. Based on this graph, the number of weeknights a customer stays at the hotel will likely be a useful predictor for room price.
+
+
+
+```{r}
+
+avg_room_price_weekend <- hotel_rates %>%
+  group_by(stays_in_weekend_nights) %>%
+  summarize(room_price_by_weekend = mean(avg_price_per_room))
+
+ggplot(avg_room_price_weekend, aes(x=stays_in_weekend_nights, y=room_price_by_weekend)) +
+  geom_point(color="magenta") +
+  labs(x="Stays in Weekend Nights", y="Average Room Price", title="Barplot of weekend nights and room price") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+After aggregating the data, we see a similar pattern with the weekend nigth guests. There is also a negative relationship between the length of stay in weekend nights and the average room price.
+
+
+## Distribution of Data
+
+```{r}
+# violin plot of the distribution of price sorted and colored by customer type
+ggplot(myhotel, aes(x = customer_type  , y = avg_price_per_room, fill = customer_type))+geom_violin()+geom_jitter()
+```
+
+This shows that the majority of the rooms booked are on the lower price end and that the majority of customers are transient, meaning they are independent bookings not part of a party, group, or contract with the hotel.
+
+
+```{r}
+# violin plot of the distribution of price sorted by meal and colored by customer type
+ggplot(myhotel, aes(x = meal  , y = avg_price_per_room, fill = customer_type))+geom_jitter()+geom_violin()
+```
+From this violin plot we can see that the majority of customers choose to have a meal plan that just includes breakfast. We can also see that as more meals are added to the meal plan, higher room rates are more common. This is likely because the meal package chosen by the customer is built into the room price.
+
+
+```{r}
+ggplot(myhotel, aes(x = avg_price_per_room)) + 
+  geom_histogram(binwidth = 50, fill = 'blue', color = 'black') + 
+  theme_minimal() + 
+  labs(title = "Histogram of Average Price per Room", x = "Price", y = "Count")
+```
+
+From this histogram we can see that the average price per room is right skewed, meaning that there are more lower priced rooms. This makes sense since hotels usually only have a few luxury suits and many more basic rooms.
+
+```{r}
+ggplot(myhotel, aes(x = avg_price_per_room)) + 
+  geom_density(fill = 'blue', alpha = 0.5) + 
+  theme_minimal() + 
+  labs(title = "avg_price_per_room", x = "avg_price_per_room", y = "Density")
+```
+This shows the above histogram as a smoothed density plot.
+
+
+
+```{r}
+
+ggplot(myhotel, aes(x = country, y = avg_price_per_room)) + 
+  geom_boxplot(fill = 'lightblue', color = 'black') + 
+  theme_minimal() + 
+  labs(title = "Boxplot of average price per room for each country", x = "country", y = "price")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+This series of boxplots does show that customers from certain countries do have higher median average room price, but due to the number of countries in the data, the graph is difficult to interpret.
+
+## Length of Stay and Number of Guests
+```{r}
+#mutate data to add column for the sum of all the guests in a booking
+hotel3<- myhotel %>% 
+  mutate(total = adults+children+babies)
+```
+
+
+```{r}
+#plot guests for week nights
+g <- ggplot(hotel3)
+g+geom_jitter(aes(y = stays_in_week_nights, x =total, color = market_segment))+
+  labs(x = "Total Number of Guests (adults, children, & babies)", y="Number Of Week Nights Guest Booked", title = "Total Guest Count vs. Length of Week Night Stay Colored by Market Segment")
+  
+```
+
+```{r}
+#plot guests for weekend nights
+g <- ggplot(hotel3)
+g+geom_jitter(aes(y = stays_in_weekend_nights, x =total, color = market_segment))+
+  labs(x = "Total Number of Guests (adults, children, & babies)", y="Number Of Weekend Nights Guest Booked", title = "Total Guest Count vs. Length of Weekend Night Stay Colored by Room Type")
+```
+
+
+From the above 2 graphs we can see that the majority of bookings include 2 guests and that bookings with more guests tend to stay fewer nights whether it be weeknights or weekend nights. We can also see that bookings with  more guests aare more commonly booked by an ofline travel agent and that bookings with a single guest are booked by corporations. 
+
+
+# Chack Model Assumptions
+
