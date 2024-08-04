@@ -11,7 +11,8 @@ library(tidyverse)
 library(caret)
 library(modeldata)
 library(corrplot)
-library(MASS)
+#library(MASS)
+library(glmnet)
 ```
 
 Clean data
@@ -204,16 +205,7 @@ This is higher than the model chosen with forward and backwards selection so per
 
 #fit models using carat package
 
-```{r}
-#make train and test set
 
-set.seed(123)  # For reproducibility
-trainIndex <- createDataPartition(hotel2$avg_price_per_room, p = .8, 
-                                  list = FALSE, 
-                                  times = 1)
-trainData <- hotel2[trainIndex, ]
-testData <- hotel2[-trainIndex, ]
-```
 
 
 
@@ -232,7 +224,7 @@ train_control <- trainControl(method = "cv", number = 3)
 
 ```{r}
 fit.lasso <- train(avg_price_per_room ~ ., 
-                   data= trainData,
+                   data= hotel2,
                    #select glmnet method
                    method= "glmnet",
                    #train control
@@ -242,6 +234,9 @@ fit.lasso <- train(avg_price_per_room ~ .,
                    #add tuning parameters
                    tuneGrid= grid)
 ```
+```{r}
+fit.lasso
+```
 
 
 ```{r}
@@ -249,6 +244,10 @@ fit.lasso$finalModel$xNames
 ```
 When we look at the final model for our lasso model, all of the predictors are also present.
 
+
+```{r}
+fit.lasso$results$Rsquared
+```
 
 
 ```{r}
@@ -280,32 +279,35 @@ levels(myhotel$meal)
 
 
 
+# fit lasso models with glmnet package
+
+## make design matrix
+```{r}
+X <- model.matrix(avg_price_per_room~0+.,hotel2) 
+y<- hotel2$avg_price_per_room
+```
+
+## run lasso model
+```{r}
+lasso.mod <- glmnet(x=X,y=y, alpha =1)
+
+```
 
 
+## do lasso with cross validation
+```{r}
+
+lasso.cv <-  cv.glmnet(x=X,y=y,alpha=1,nfolds = 10)
+```
+
+```{r}
+lasso.cv$lambda.1se
+```
 
 
+## plot lasso model
+```{r}
+plot(lasso.mod, label = TRUE, xvar = "lambda")+abline(v=log(lasso.cv$lambda.1se))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```
 
