@@ -1,5 +1,5 @@
 
-# Predicting Hotel Room Rates 
+# Predicting Hotel Stays 
 
 # Contributors
 - Rachel Fellman
