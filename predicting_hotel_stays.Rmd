@@ -218,5 +218,102 @@ g+geom_jitter(aes(y = stays_in_weekend_nights, x =total, color = market_segment)
 From the above 2 graphs we can see that the majority of bookings include 2 guests and that bookings with more guests tend to stay fewer nights whether it be weeknights or weekend nights. We can also see that bookings with  more guests aare more commonly booked by an ofline travel agent and that bookings with a single guest are booked by corporations. 
 
 
-# Chack Model Assumptions
+# Check Model Assumptions
+## make residual plot
+```{r}
+# make model with all variables
+model1 <- lm(avg_price_per_room~., data = myhotel)
+```
+
+```{r}
+#add predictions and residuals to our dataframe to make residual plot
+hotel.pred <- mutate(myhotel, pred = fitted(model1), resid = residuals(model1))
+```
+
+```{r}
+#make residual plot
+ggplot(hotel.pred, aes(x=pred, y = resid))+geom_point()+geom_hline(yintercept = 0, color = "red")
+```
+
+
+This does not fit the necessary assumptions for linear modeling. There is a clear pattern to the data and the points do not appear to be randomly scattered.
+We will try transforming the data  with a log transformation to better meet the assumptions.
+
+## Transform Data and Check Assumptions
+
+```{r}
+#do log transformation on avg_price_per_room
+hotel2 <- mutate(myhotel, avg_price_per_room = log(avg_price_per_room))
+```
+
+
+
+```{r}
+#fit model again with log transformed data
+model2<- lm(avg_price_per_room~., data = hotel2)
+```
+
+```{r}
+#add predictions and residuals to our dataframe to make residual plot
+hotel2.pred <- mutate(hotel2, pred = fitted(model2), resid = residuals(model2))
+```
+
+```{r}
+#make residual plot
+
+ggplot(hotel2.pred, aes(x=pred, y = resid))+geom_point()+geom_hline(yintercept = 0, color = "red")
+```
+
+After the log transformation, the residuals are spread more evenly around the red line and there is no longer an obvious pattern. Therefore, our data meets the linearity assumption, the independence assumption and the equal variance assumption.
+
+
+
+Next We will make the qq-plot
+```{r}
+ggplot(hotel2.pred, aes(sample= resid))+stat_qq() +stat_qq_line()
+```
+Since the points in the qq plot follow the diagonal line, we have met the normal population assumption.
+
+
+
+
+# Check for Multicolinearity
+
+First we will transform the date variable into Julian date, so that it is a numeric.
+```{r}
+hotel_df <- hotel2 %>%
+  mutate(julian_date = yday(arrival_date)) %>%
+  dplyr::select(-arrival_date)
+```
+
+
+```{r}
+#filter data to include only numeric variables
+myhotel.num <- hotel_df %>% 
+  dplyr::select(avg_price_per_room,lead_time,stays_in_weekend_nights,stays_in_week_nights,adults,children,babies,previous_cancellations,previous_bookings_not_canceled,booking_changes,days_in_waiting_list,required_car_parking_spaces,total_of_special_requests,arrival_date_num, julian_date)
+```
+
+
+```{r}
+#create correlation matrix
+cor.mat <- cor(myhotel.num)
+```
+
+## Make Correlation Plot
+```{r}
+#plot correlation matrix
+ggcorrplot::ggcorrplot(cor.mat,
+           type = "lower", #looks at just half of the matrix
+           method = "circle")  #change to circle
+```
+``
+From this correlation plot, we can see that there is a surprisingly high correlation between stays in weeknights and stays in weekend nights. All other variables do not appear to be highly correlated.
+
+
+## Check VIF
+
+
+
+
+
 

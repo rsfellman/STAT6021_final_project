@@ -114,14 +114,7 @@ g+geom_jitter(aes(y = stays_in_weekend_nights, x =total, color = market_segment)
 
 
 
-```{r}
-ggplot(myhotel, aes(x=is_repeated_guest, y=avg_price_per_room)) +
-  geom_jitter(alpha=0.1, color="blue") +
-  geom_boxplot(outlier.color="red") +
-  labs(x="Repeat Guest", y="Average Room Price", title="Boxplot of Repeat Customers and Average Room Price") + 
-  theme_bw() +
-  theme(plot.title = element_text(hjust = 0.5))
-```
+
 
 
 
@@ -129,8 +122,8 @@ ggplot(myhotel, aes(x=is_repeated_guest, y=avg_price_per_room)) +
 
 ```{r}
 #filter data to include only numeric variables
-myhotel.num <- myhotel %>% 
-  select(avg_price_per_room,lead_time,stays_in_weekend_nights,stays_in_week_nights,adults,children,babies,previous_cancellations,previous_bookings_not_canceled,booking_changes,days_in_waiting_list,required_car_parking_spaces,total_of_special_requests,arrival_date_num)
+myhotel.num <- hotel_df %>% 
+  dplyr::select(avg_price_per_room,lead_time,stays_in_weekend_nights,stays_in_week_nights,adults,children,babies,previous_cancellations,previous_bookings_not_canceled,booking_changes,days_in_waiting_list,required_car_parking_spaces,total_of_special_requests,arrival_date_num, julian_date)
 ```
 
 
@@ -177,26 +170,7 @@ We will try transforming the data  with a log transformation to better meet the 
 hotel2 <- mutate(myhotel, avg_price_per_room = log(avg_price_per_room))
 ```
 
-```{r}
-ggplot()
-```
 
-
-```{r}
-
-hotel_df <- hotel2 %>%
-  mutate(julian_date = yday(arrival_date)) %>%
-  dplyr::select(-arrival_date)
-```
-
-### Model Selection
-
-#### classic lm function (global F-test and individual T-tests)
-
-```{r}
-model1 <- lm(avg_price_per_room~., data=hotel_df)
-summary(model1)
-```
 
 
 ```{r}
