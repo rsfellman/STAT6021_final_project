@@ -15,7 +15,7 @@ The purpose of this project is to represent our ability as data scientists to fi
 `tidyverse`  
 `glmnet`  
 `caret`  
-`ggcorrplot`
+`ggcorrplot`  
 `modeldata`
 
 # Data
