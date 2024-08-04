@@ -47,7 +47,6 @@ g<- ggplot(myhotel, aes(x = lead_time, y = avg_price_per_room))
 g+ geom_point(aes(color = customer_type))+
   labs(x = "lead time (days)", y = "Average Room Price (euros)")
   
-
 ```
 
 This is a scatter plot of average room rate in euros compared to the number of days between entering the date of booking into the system and the guest's arrival date. The points are colored by customer type. It appears that the majority of bookings are transient meaning they are not associated with a group or contract. From this plot we can see that there is a slightly negative relationship between lead time and room rate.
@@ -59,7 +58,7 @@ bar graph of `room_type` colored by `market_segment`
 #define base plot
 g<- ggplot(myhotel, aes(x = reserved_room_type))
  g+ geom_bar(aes(fill= market_segment))+
-  labs(x = "Room type")
+  labs(x = "Room type", title = "Count of Room Type by Market Segment")
 ```
 There appears to be a much higher count of room type a than any of the other room types. Due to the necessity of anonymity, we do not have access to what room type a is. From this graph, it also seems that the majority of all room types are from online travel agents.
 
@@ -84,6 +83,44 @@ g<- ggplot(myhotel)
 g+geom_jitter(aes(y = avg_price_per_room, x = arrival_date_num, color = assigned_room_type))
 ```
 The relationship between avg_price_per_room and arrival_date does not appear to be linear, but rather is quadratic. It's hard to say without knowing a lot about the hotel business and tourism why room prices were generally lower in the beginning of 2017 versus other times. We can also see from this graph that certain room types are consistently higher priced than others, so room type is likely a good predictor of price.
+
+
+```{r}
+hotel3<- hotel2 %>% 
+  mutate(total = adults+children+babies)
+```
+
+
+```{r}
+g <- ggplot(hotel3)
+g+geom_jitter(aes(y = stays_in_week_nights, x =total, color = market_segment))+
+  labs(x = "Total Number of Guests (adults, children, & babies)", y="Number Of Week Nights Guest Booked", title = "Total Guest Count vs. Length of Week Night Stay Colored by Market Segment")
+  
+```
+
+```{r}
+g <- ggplot(hotel3)
+g+geom_jitter(aes(y = stays_in_weekend_nights, x =total, color = market_segment))+
+  labs(x = "Total Number of Guests (adults, children, & babies)", y="Number Of Weekend Nights Guest Booked", title = "Total Guest Count vs. Length of Weekend Night Stay Colored by Room Type")
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+ggplot(myhotel, aes(x=is_repeated_guest, y=avg_price_per_room)) +
+  geom_jitter(alpha=0.1, color="blue") +
+  geom_boxplot(outlier.color="red") +
+  labs(x="Repeat Guest", y="Average Room Price", title="Boxplot of Repeat Customers and Average Room Price") + 
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
 
 
 
@@ -139,14 +176,37 @@ We will try transforming the data  with a log transformation to better meet the 
 hotel2 <- mutate(myhotel, avg_price_per_room = log(avg_price_per_room))
 ```
 
+```{r}
+ggplot()
+```
 
 
+```{r}
+
+hotel_df <- hotel2 %>%
+  mutate(julian_date = yday(arrival_date)) %>%
+  dplyr::select(-arrival_date)
+```
+
+### Model Selection
+
+#### classic lm function (global F-test and individual T-tests)
+
+```{r}
+model1 <- lm(avg_price_per_room~., data=hotel_df)
+summary(model1)
+```
 
 
 ```{r}
 #fit model again with log transformed data
 model2<- lm(avg_price_per_room~., data = hotel2)
 ```
+
+```{r}
+summary(model2)
+```
+
 
 ```{r}
 #add predictions and residuals to our dataframe to make residual plot
@@ -310,4 +370,5 @@ lasso.cv$lambda.1se
 plot(lasso.mod, label = TRUE, xvar = "lambda")+abline(v=log(lasso.cv$lambda.1se))
 
 ```
+
 
