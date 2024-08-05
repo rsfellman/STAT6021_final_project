@@ -1,0 +1,513 @@
+---
+title: "Predicting Hotel Stays"
+author: "Rachel Fellman, Bernard Gonzales, Ashley Huang, Léa Runesha, & Riya Pulla"
+date: "2024-08-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Import Required Libraries
+```{r}
+library(tidyverse)
+library(modeldata)
+library(ggcorrplot)
+library(broom)
+library(caret)
+library(glmnet)
+library(pls)
+library(car)
+```
+
+# Data
+
+## Get Data
+```{r}
+data("hotel_rates")
+```
+
+## Clean Data
+```{r}
+
+#change certain rows to factors
+myhotel<- hotel_rates %>% 
+  mutate(is_repeated_guest = as.factor(is_repeated_guest),
+         near_christmas = as.factor(near_christmas),
+         near_new_years = as.factor(near_new_years)) %>% 
+      #take out historical_adr variable since it is not part of the original data
+  dplyr::select(- historical_adr)
+```
+
+
+# Research Questions
+1. What demographics, such as country of origin, number of adults/children/babies/etc, affect how long guests stay in a hotel? 
+
+2. Does the price affect if an individual will become a repeat guest or not?  
+
+3. Does the market segment, the method used to book a hotel, affect the price, holding everything else constant?  
+
+
+
+# Exploratory Data Analysis
+
+
+## Repeat Customers
+
+```{r}
+# summar
+hotel_rates %>%
+  group_by(is_repeated_guest) %>%
+  summarise(avg_price_by_guest = mean(avg_price_per_room))
+
+ggplot(myhotel, aes(x=is_repeated_guest, y=avg_price_per_room)) +
+  geom_jitter(alpha=0.1, color="blue") +
+  geom_boxplot(outlier.color="red") +
+  labs(x="Repeat Guest", y="Average Room Price", title="Boxplot of Repeat Customers and Room Price") + 
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+This boxplot helps us answer the research question regarding price and repeated guests. Here we can see that in general repeated guests have lower room costs than new guests. This could be because the hotels offer some sort of reward program for returning guests. It is difficult to say why but there is clearly some relationship between average hotel room price and returning guests.
+
+
+To investigate further we looked at if room type could be the cause of the different prices for returning and new guests
+```{r}
+# repeat guest colored by room type 
+g <- ggplot(myhotel, aes(x = assigned_room_type, y = avg_price_per_room)) # Create the ggplot object
+# Add a bar plot with the average price as the y variable, colored by repeat guest status
+g + stat_summary(fun = mean, geom = "bar", aes(fill = is_repeated_guest), position = "dodge") +
+  labs(x = "Assigned Room Type", y = "Average Price per Room", title = "Average Price for Each Room Type Colored By Repeat Guest Status")
+
+```
+
+From this graph we can see that even though certain room types do tend to have different prices, across the  majority of room types the average room price still tends to be lower for repeated guests than not guests. 
+
+We have to take into account here that because this is real data, it has been anonymized and we don't know what the actual room types are so unfortunately we have lost some of the interpretability. However, from basic knowledge of hotels, typically suites or larger rooms with better views tend to cost more.
+
+
+
+## Room Price and Time
+
+Scatter plot of `avg_price_per_room` vs `lead_time` (Number of days that elapsed between the entering date of the booking into the PMS and the arrival date) colored by `customer_type`.
+```{r}
+#make base plot
+g<- ggplot(myhotel, aes(x = lead_time, y = avg_price_per_room))
+#add layers
+g+ geom_point(aes(color = customer_type))+
+  labs(x = "lead time (days)", y = "Average Room Price (euros)")
+  
+```
+This is a scatter plot of average room rate in euros compared to the number of days between entering the date of booking into the system and the guest's arrival date. The points are colored by customer type. It appears that the majority of bookings are transient meaning they are not associated with a group or contract. From this plot we can see that there is a slightly negative relationship between lead time and room rate.
+
+
+
+scatterplot of arrival date vs avg_price_per_room colored by room type.
+```{r}
+g<- ggplot(myhotel)
+g+geom_jitter(aes(y = avg_price_per_room, x = arrival_date_num, color = assigned_room_type))
+```
+The relationship between avg_price_per_room and arrival_date does not appear to be linear, but rather is quadratic. It's hard to say without knowing a lot about the hotel business and tourism why room prices were generally lower in the beginning of 2017 versus other times. We can also see from this graph that certain room types are consistently higher priced than others, so room type is likely a good predictor of price. Our model would likely be improved if we squared the arrival_date_num variable, but for the purpose of this class (linear models) we are chosing not to add a squared term.
+
+
+
+```{r}
+#aggregate the data
+avg_room_price_week <- hotel_rates %>%
+  group_by(stays_in_week_nights) %>%
+  summarize(room_price_by_week = mean(avg_price_per_room))
+
+ggplot(avg_room_price_week, aes(x=stays_in_week_nights, y=room_price_by_week)) +
+  geom_point(color="blue") +
+  labs(x="Stays in Week Nights", y="Average Room Price", title="Scatterplot of week nights and room price") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+From this scatter plot of aggregated data, we can see the generally negative relationship between the number of stays in week nights and the average room price. This could be because hotels provide a discount if a customer books more nights. Based on this graph, the number of weeknights a customer stays at the hotel will likely be a useful predictor for room price.
+
+
+
+```{r}
+
+avg_room_price_weekend <- hotel_rates %>%
+  group_by(stays_in_weekend_nights) %>%
+  summarize(room_price_by_weekend = mean(avg_price_per_room))
+
+ggplot(avg_room_price_weekend, aes(x=stays_in_weekend_nights, y=room_price_by_weekend)) +
+  geom_point(color="magenta") +
+  labs(x="Stays in Weekend Nights", y="Average Room Price", title="Barplot of weekend nights and room price") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+After aggregating the data, we see a similar pattern with the weekend nigth guests. There is also a negative relationship between the length of stay in weekend nights and the average room price.
+
+
+## Distribution of Data
+
+```{r}
+# violin plot of the distribution of price sorted and colored by customer type
+ggplot(myhotel, aes(x = customer_type  , y = avg_price_per_room, fill = customer_type))+geom_violin()+geom_jitter()
+```
+
+This shows that the majority of the rooms booked are on the lower price end and that the majority of customers are transient, meaning they are independent bookings not part of a party, group, or contract with the hotel.
+
+
+```{r}
+# violin plot of the distribution of price sorted by meal and colored by customer type
+ggplot(myhotel, aes(x = meal  , y = avg_price_per_room, fill = customer_type))+geom_jitter()+geom_violin()
+```
+From this violin plot we can see that the majority of customers choose to have a meal plan that just includes breakfast. We can also see that as more meals are added to the meal plan, higher room rates are more common. This is likely because the meal package chosen by the customer is built into the room price.
+
+
+```{r}
+ggplot(myhotel, aes(x = avg_price_per_room)) + 
+  geom_histogram(binwidth = 50, fill = 'blue', color = 'black') + 
+  theme_minimal() + 
+  labs(title = "Histogram of Average Price per Room", x = "Price", y = "Count")
+```
+
+From this histogram we can see that the average price per room is right skewed, meaning that there are more lower priced rooms. This makes sense since hotels usually only have a few luxury suits and many more basic rooms.
+
+```{r}
+ggplot(myhotel, aes(x = avg_price_per_room)) + 
+  geom_density(fill = 'blue', alpha = 0.5) + 
+  theme_minimal() + 
+  labs(title = "avg_price_per_room", x = "avg_price_per_room", y = "Density")
+```
+This shows the above histogram as a smoothed density plot.
+
+
+
+```{r}
+
+ggplot(myhotel, aes(x = country, y = avg_price_per_room)) + 
+  geom_boxplot(fill = 'lightblue', color = 'black') + 
+  theme_minimal() + 
+  labs(title = "Boxplot of average price per room for each country", x = "country", y = "price")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+This series of boxplots does show that customers from certain countries do have higher median average room price, but due to the number of countries in the data, the graph is difficult to interpret.
+
+## Length of Stay and Number of Guests
+```{r}
+#mutate data to add column for the sum of all the guests in a booking
+hotel3<- myhotel %>% 
+  mutate(total = adults+children+babies)
+```
+
+
+```{r}
+#plot guests for week nights
+g <- ggplot(hotel3)
+g+geom_jitter(aes(y = stays_in_week_nights, x =total, color = market_segment))+
+  labs(x = "Total Number of Guests (adults, children, & babies)", y="Number Of Week Nights Guest Booked", title = "Total Guest Count vs. Length of Week Night Stay Colored by Market Segment")
+  
+```
+
+```{r}
+#plot guests for weekend nights
+g <- ggplot(hotel3)
+g+geom_jitter(aes(y = stays_in_weekend_nights, x =total, color = market_segment))+
+  labs(x = "Total Number of Guests (adults, children, & babies)", y="Number Of Weekend Nights Guest Booked", title = "Total Guest Count vs. Length of Weekend Night Stay Colored by Room Type")
+```
+
+
+From the above 2 graphs we can see that the majority of bookings include 2 guests and that bookings with more guests tend to stay fewer nights whether it be weeknights or weekend nights. We can also see that bookings with  more guests aare more commonly booked by an ofline travel agent and that bookings with a single guest are booked by corporations. 
+
+
+# Check Model Assumptions
+## make residual plot
+```{r}
+# make model with all variables
+model1 <- lm(avg_price_per_room~., data = myhotel)
+```
+
+```{r}
+#add predictions and residuals to our dataframe to make residual plot
+hotel.pred <- mutate(myhotel, pred = fitted(model1), resid = residuals(model1))
+```
+
+```{r}
+#make residual plot
+ggplot(hotel.pred, aes(x=pred, y = resid))+geom_point()+geom_hline(yintercept = 0, color = "red")
+```
+
+
+This does not fit the necessary assumptions for linear modeling. There is a clear pattern to the data and the points do not appear to be randomly scattered.
+We will try transforming the data  with a log transformation to better meet the assumptions.
+
+## Transform Data and Check Assumptions
+
+```{r}
+#do log transformation on avg_price_per_room
+hotel2 <- mutate(myhotel, avg_price_per_room = log(avg_price_per_room))
+```
+
+
+
+```{r}
+#fit model again with log transformed data
+model2<- lm(avg_price_per_room~., data = hotel2)
+```
+
+```{r}
+#add predictions and residuals to our dataframe to make residual plot
+hotel2.pred <- mutate(hotel2, pred = fitted(model2), resid = residuals(model2))
+```
+
+```{r}
+#make residual plot
+
+ggplot(hotel2.pred, aes(x=pred, y = resid))+geom_point()+geom_hline(yintercept = 0, color = "red")
+```
+
+After the log transformation, the residuals are spread more evenly around the red line and there is no longer an obvious pattern. Therefore, our data meets the linearity assumption, the independence assumption and the equal variance assumption.
+
+
+
+Next We will make the qq-plot
+```{r}
+ggplot(hotel2.pred, aes(sample= resid))+stat_qq() +stat_qq_line()
+```
+Since the points in the qq plot follow the diagonal line, we have met the normal population assumption.
+
+
+
+
+# Check for Multicolinearity
+
+First we will transform the date variable into Julian date, so that it is a numeric.
+```{r}
+hotel_df <- hotel2 %>%
+  mutate(julian_date = yday(arrival_date)) %>%
+  dplyr::select(-arrival_date)
+```
+
+
+```{r}
+#filter data to include only numeric variables
+myhotel.num <- hotel_df %>% 
+  dplyr::select(avg_price_per_room,lead_time,stays_in_weekend_nights,stays_in_week_nights,adults,children,babies,previous_cancellations,previous_bookings_not_canceled,booking_changes,days_in_waiting_list,required_car_parking_spaces,total_of_special_requests,arrival_date_num, julian_date)
+```
+
+
+```{r}
+#create correlation matrix
+cor.mat <- cor(myhotel.num)
+```
+
+## Make Correlation Plot
+```{r}
+#plot correlation matrix
+ggcorrplot(cor.mat,
+           type = "lower", #looks at just half of the matrix
+           method = "circle")  #change to circle
+```
+``
+From this correlation plot, we can see that there is a surprisingly high correlation between stays in weeknights and stays in weekend nights. All other variables do not appear to be highly correlated.
+
+
+
+## Check VIF
+```{r}
+#make model of linear variables to check VIF
+model3<- lm(avg_price_per_room~.,data=myhotel.num)
+```
+
+
+```{r}
+vif(model3)
+```
+None of the VIFs are very high for any of the numeric variables so we won't remove any variables due to multicolinearity.
+
+# Build Linear Models
+
+### Linear model with all variables
+```{r}
+model4 <- lm(avg_price_per_room~., data=hotel_df)
+summary(model4)
+```
+
+## Variable Selection
+
+### Stepwise Regression
+```{r}
+stepwise_reg <- stepAIC(model4, direction="both", Trace=F)
+```
+```{r}
+summary(stepwise_reg)
+```
+Using stepwise regression our final mode is:  
+avg_price_per_room ~ lead_time + stays_in_week_nights + 
+    adults + children + babies + meal + country + market_segment + 
+    distribution_channel + is_repeated_guest + previous_cancellations + 
+    reserved_room_type + assigned_room_type + agent + days_in_waiting_list + 
+    customer_type + required_car_parking_spaces + arrival_date_num + 
+    near_christmas + near_new_years + julian_date  
+    
+The variables removed from this model are `stays_in_weekend_nights`, `previous_bookings_not_canceled`, `booking_changes`, `company`, and `total_of_special_requests`. 
+
+However this has a lower R^2 value than our original model with all variables present.
+
+```{r}
+
+# model with all the predictors
+RMSE(hotel_df$avg_price_per_room, model4$fitted.values)
+
+# stepAIC model
+RMSE(hotel_df$avg_price_per_room,stepwise_reg$fitted.values)
+```
+
+
+### Ridge Regression
+
+```{r}
+x <- model.matrix(avg_price_per_room~0+., data=hotel_df)
+y <- hotel_df$avg_price_per_room
+
+ridge_model <- glmnet(x=x, y=y, alpha=0)
+
+kcv_glmnet <- cv.glmnet(x=x, y=y, alpha=0, nfolds=10)
+kcv_glmnet$lambda.1se
+
+plot(ridge_model, label=T, xvar="lambda") + abline(v=log(kcv_glmnet$lambda.1se))
+```
+
+
+
+Due to the number of categorical variables and the number of levels in each category, the ridge regression was difficult to interpret.
+
+### Lasso Regression
+```{r}
+# Define the grid of alpha and lambda values
+grid <- expand.grid(alpha = 1,  # Lasso regression
+                    lambda = seq(-0.0001, 1, length.out = 100))
+# Set up training control
+train_control <- trainControl(method = "cv", number = 3)
+
+
+```
+
+
+
+```{r, warning=FALSE}
+fit.lasso <- train(avg_price_per_room ~ ., 
+                   data= hotel_df,
+                   #select glmnet method
+                   method= "glmnet",
+                   #train control
+                   train_control = train_control,
+                   #calculate rmse metric
+                   metric= "Rsquared",
+                   #add tuning parameters
+                   tuneGrid= grid)
+```
+
+
+
+
+```{r}
+fit.lasso$finalModel$xNames
+```
+When we look at the final model for our lasso model, all of the predictors are also present, so our fully relaxed lasso model would be the same as the original model with all variables present.
+
+
+make design matrix
+```{r}
+X <- model.matrix(avg_price_per_room~0+.,hotel_df) 
+y<- hotel_df$avg_price_per_room
+```
+
+run lasso model
+```{r}
+lasso.mod <- glmnet(x=X,y=y, alpha =1)
+
+```
+
+
+## do lasso with cross validation
+```{r}
+
+lasso.cv <-  cv.glmnet(x=X,y=y,alpha=1,nfolds = 10)
+```
+
+```{r}
+lasso.cv$lambda.1se
+```
+
+
+## plot lasso model
+```{r}
+plot(lasso.mod, label = TRUE, xvar = "lambda")+abline(v=log(lasso.cv$lambda.1se))
+
+```
+
+# Prediction with Linear Model
+
+
+```{r}
+unique(hotel_df$market_segment)
+
+hotel_df %>%
+  
+
+# different market agent new_data
+
+online_agent <- hotel_df %>%
+  filter(market_segment == "online_travel_agent") %>%
+  head(1)
+
+offline_agent <- hotel_df %>%
+  filter(market_segment == "offline_travel_agent") %>%
+  head(1)
+
+direct <- hotel_df %>%
+  filter(market_segment == "direct") %>%
+  head(1)
+
+corporate <- hotel_df %>%
+  filter(market_segment == "corporate") %>%
+  head(1)
+
+group <- hotel_df %>%
+  filter(market_segment == "groups") %>%
+  head(1)
+
+market_agent_df <- rbind(online_agent, offline_agent, direct, corporate, group)
+
+predict(model4, newdata=market_agent_df, interval='prediction', level=0.95)
+
+#market_agent_df[, c(1, 10)]
+```
+
+# Logistic Regression
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
