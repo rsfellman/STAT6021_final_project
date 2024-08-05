@@ -1,3 +1,4 @@
+
 ---
 title: "Predicting Hotel Stays"
 author: "Rachel Fellman, Bernard Gonzales, Ashley Huang, Léa Runesha, & Riya Pulla"
@@ -18,6 +19,7 @@ library(broom)
 library(caret)
 library(glmnet)
 library(pls)
+library(car)
 ```
 
 # Data
@@ -351,7 +353,12 @@ The variables removed from this model are `stays_in_weekend_nights`, `previous_b
 However this has a lower R^2 value than our original model with all variables present.
 
 ```{r}
-RMSE(stepwise_reg)
+
+# model with all the predictors
+RMSE(hotel_df$avg_price_per_room, model4$fitted.values)
+
+# stepAIC model
+RMSE(hotel_df$avg_price_per_room,stepwise_reg$fitted.values)
 ```
 
 
@@ -441,6 +448,40 @@ plot(lasso.mod, label = TRUE, xvar = "lambda")+abline(v=log(lasso.cv$lambda.1se)
 # Prediction with Linear Model
 
 
+```{r}
+unique(hotel_df$market_segment)
+
+hotel_df %>%
+  
+
+# different market agent new_data
+
+online_agent <- hotel_df %>%
+  filter(market_segment == "online_travel_agent") %>%
+  head(1)
+
+offline_agent <- hotel_df %>%
+  filter(market_segment == "offline_travel_agent") %>%
+  head(1)
+
+direct <- hotel_df %>%
+  filter(market_segment == "direct") %>%
+  head(1)
+
+corporate <- hotel_df %>%
+  filter(market_segment == "corporate") %>%
+  head(1)
+
+group <- hotel_df %>%
+  filter(market_segment == "groups") %>%
+  head(1)
+
+market_agent_df <- rbind(online_agent, offline_agent, direct, corporate, group)
+
+predict(model4, newdata=market_agent_df, interval='prediction', level=0.95)
+
+#market_agent_df[, c(1, 10)]
+```
 
 # Logistic Regression
 
