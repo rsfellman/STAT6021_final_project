@@ -64,8 +64,8 @@ avg_room_price_week <- hotel_rates %>%
   summarize(room_price_by_week = mean(avg_price_per_room))
 
 ggplot(avg_room_price_week, aes(x=stays_in_week_nights, y=room_price_by_week)) +
-  geom_bar(stat="identity", fill="blue") +
-  labs(x="Stays in Week Nights", y="Average Room Price", title="Barplot of week nights and room price") +
+  geom_point(stat="identity", color="blue") +
+  labs(x="Stays in Week Nights", y="Average Room Price", title="Scatterplot of week nights and room price") +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5))
 ```
@@ -77,7 +77,7 @@ avg_room_price_weekend <- hotel_rates %>%
   summarize(room_price_by_weekend = mean(avg_price_per_room))
 
 ggplot(avg_room_price_weekend, aes(x=stays_in_weekend_nights, y=room_price_by_weekend)) +
-  geom_bar(stat="identity", fill="magenta") +
+  geom_point(fill="magenta") +
   labs(x="Stays in Weekend Nights", y="Average Room Price", title="Barplot of weekend nights and room price") +
   theme_bw() +
   theme(plot.title = element_text(hjust = 0.5))

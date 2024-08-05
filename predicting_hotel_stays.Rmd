@@ -1,3 +1,4 @@
+
 ---
 title: "Predicting Hotel Stays"
 author: "Rachel Fellman, Bernard Gonzales, Ashley Huang, Léa Runesha, & Riya Pulla"
