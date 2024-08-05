@@ -1,5 +1,5 @@
 
-# Predicting Hotel Room Rates 
+# Predicting Hotel Stays 
 
 # Contributors
 - Rachel Fellman
@@ -16,7 +16,11 @@ The purpose of this project is to represent our ability as data scientists to fi
 `glmnet`  
 `caret`  
 `ggcorrplot`  
-`modeldata`
+`modeldata`  
+`broom`  
+`pls`  
+`car`  
+
 
 # Data
 This data was collected from hotels in Portugal, with the aim of creating prediction models. Because this is real data from hotels, all identifying information for hotels and customers has been removed from the data.
