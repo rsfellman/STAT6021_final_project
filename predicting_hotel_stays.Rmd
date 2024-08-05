@@ -213,7 +213,7 @@ g+geom_jitter(aes(y = stays_in_weekend_nights, x =total, color = market_segment)
 ```
 
 
-From the above 2 graphs we can see that the majority of bookings include 2 guests and that bookings with more guests tend to stay fewer nights whether it be weeknights or weekend nights. We can also see that bookings with  more guests aare more commonly booked by an ofline travel agent and that bookings with a single guest are booked by corporations. 
+From the above 2 graphs we can see that the majority of bookings include 2 guests and that bookings with more guests tend to stay fewer nights whether it be weeknights or weekend nights. We can also see that bookings with  more guests are more commonly booked by an offline travel agent and that bookings with a single guest are booked by corporations. 
 
 
 # Check Model Assumptions
