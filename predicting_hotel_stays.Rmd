@@ -488,12 +488,13 @@ predict(model4, newdata=market_agent_df, interval='prediction', level=0.95)
 
 ```{r}
 hotel.log<- myhotel %>% 
-  mutate(above_avg = ifelse(avg_price_per_room >mean(avg_price_per_room), 1,0))
+  mutate(above_avg = ifelse(avg_price_per_room >mean(avg_price_per_room), 1,0)) %>% 
+  dplyr::select(-avg_price_per_room)
 ```
 
 
 ```{r}
-logit_mod <- glm(above_avg~.-avg_price_per_room, hotel.log, family = "binomial")
+logit_mod <- glm(above_avg~., hotel.log, family = "binomial")
 ```
 
 ```{r}
@@ -501,8 +502,19 @@ summary(logit_mod)
 ```
 
 
+```{r}
+hotel.log2<- hotel.log %>% 
+  select(-babies,-country,-previous_cancellations,-previous_bookings_not_canceled,-market_segment, -company, -days_in_waiting_list, -stays_in_week_nights, -booking_changes)
+```
 
+-previous_cancellations
 
+```{r}
+logit_mod2 <- glm(above_avg~., hotel.log2, family = "binomial")
+```
 
+```{r}
+summary(logit_mod2)
+```
 
 
