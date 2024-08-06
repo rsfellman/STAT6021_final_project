@@ -507,7 +507,6 @@ hotel.log2<- hotel.log %>%
   select(-babies,-country,-previous_cancellations,-previous_bookings_not_canceled,-market_segment, -company, -days_in_waiting_list, -stays_in_week_nights, -booking_changes)
 ```
 
--previous_cancellations
 
 ```{r}
 logit_mod2 <- glm(above_avg~., hotel.log2, family = "binomial")
