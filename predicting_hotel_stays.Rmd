@@ -20,6 +20,7 @@ library(caret)
 library(glmnet)
 library(pls)
 library(car)
+library(MASS)
 ```
 
 # Data
@@ -478,42 +479,113 @@ group <- hotel_df %>%
 
 market_agent_df <- rbind(online_agent, offline_agent, direct, corporate, group)
 
-predict(model4, newdata=market_agent_df, interval='prediction', level=0.95)
+x<- predict(model4, newdata=market_agent_df, interval='prediction', level=0.95)
 
 #market_agent_df[, c(1, 10)]
 ```
 
+```{r}
+as.data.frame(x)
+```
+
+```{r}
+exp(x)
+```
+
+
+
+
 # Logistic Regression
 
+## repeated guest full model
+we took out previous cancellations and previous bookings not canceled since those can perfectly predict if someone is a repeat customer
+```{r}
+logit_mod3 <- glm(is_repeated_guest~.-previous_cancellations-previous_bookings_not_canceled, myhotel, family = "binomial")
+```
+
+```{r}
+summary(logit_mod3)
+```
+### get accuracy
+```{r}
+hotel.log2<- mutate(myhotel, prob = predict(logit_mod3, type="response"), odds = log(prob/(1-prob)), classify = ifelse(prob>.5, "1","0"))
+```
+
+
+```{r}
+table(hotel.log2$classify, hotel.log2$is_repeated_guest)
+```
+
+```{r}
+(14248+370)/(14284+643+141+370)
+
+```
+
+## Check logistic assumptions
+
+```{r}
+hotel.log4<- mutate(myhotel.num, prob = predict(logit_mod3, type="response"), odds = log(prob/(1-prob)))
+```
+
+Transform the data to long format to use facet wrap to check linearity.
+```{r}
+long <- hotel.log4 %>%
+  pivot_longer(cols = c(avg_price_per_room, lead_time,stays_in_weekend_nights, adults, children, babies, previous_cancellations, previous_bookings_not_canceled, booking_changes, days_in_waiting_list, required_car_parking_spaces, total_of_special_requests, stays_in_week_nights, arrival_date_num, julian_date), names_to = "predictor", values_to = "value")
+```
+
+
+### graph
+
+```{r}
+ggplot(long, aes(x = value, y = odds))+
+  geom_point()+
+  facet_wrap(~ predictor, scales = "free_x")
+```
+These aren't great looking graphs but this is probably because many of our numeric predictors are only integers and not continuous so it creates gaps in the scatter plots. 
+Seeing as there are not obvious curves to the graphs, we will say we meet the linearity assumption.
+
+
+
+
+
+
+## remove variables that are not significant
 
 ```{r}
 hotel.log<- myhotel %>% 
-  mutate(above_avg = ifelse(avg_price_per_room >mean(avg_price_per_room), 1,0)) %>% 
-  dplyr::select(-avg_price_per_room)
+  dplyr::select(-previous_cancellations, -previous_bookings_not_canceled, -country, -distribution_channel, -agent, -stays_in_week_nights, -booking_changes)
+```
+
+
+
+```{r}
+logit_mod4 <- glm(is_repeated_guest~., hotel.log, family = "binomial")
+```
+
+## get accuracy
+```{r}
+hotel.log3<- mutate(myhotel, prob = predict(logit_mod4, type="response"), odds = log(prob/(1-prob)), classify = ifelse(prob>.5, "1","0"))
 ```
 
 
 ```{r}
-logit_mod <- glm(above_avg~., hotel.log, family = "binomial")
+table(hotel.log3$classify, hotel.log3$is_repeated_guest)
 ```
 
 ```{r}
-summary(logit_mod)
+(14265+300)/(14244+716+145+297)
 ```
+
 
 
 ```{r}
-hotel.log2<- hotel.log %>% 
-  select(-babies,-country,-previous_cancellations,-previous_bookings_not_canceled,-market_segment, -company, -days_in_waiting_list, -stays_in_week_nights, -booking_changes)
+summary(logit_mod4)
 ```
 
+
+## do predictions with logistic model
 
 ```{r}
-logit_mod2 <- glm(above_avg~., hotel.log2, family = "binomial")
-```
 
-```{r}
-summary(logit_mod2)
 ```
-
 
