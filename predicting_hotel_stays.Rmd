@@ -351,7 +351,7 @@ avg_price_per_room ~ lead_time + stays_in_week_nights +
     
 The variables removed from this model are `stays_in_weekend_nights`, `previous_bookings_not_canceled`, `booking_changes`, `company`, and `total_of_special_requests`. 
 
-However this has a lower R^2 value than our original model with all variables present.
+However this has a lower adjusted R^2 value than our original model with all variables present.
 
 ```{r}
 
@@ -516,7 +516,10 @@ hotel.log2<- mutate(myhotel, prob = predict(logit_mod3, type="response"), odds =
 table(hotel.log2$classify, hotel.log2$is_repeated_guest)
 ```
 
+
+
 ```{r}
+#accuracy
 (14248+370)/(14284+643+141+370)
 
 ```
@@ -572,8 +575,11 @@ hotel.log3<- mutate(myhotel, prob = predict(logit_mod4, type="response"), odds =
 table(hotel.log3$classify, hotel.log3$is_repeated_guest)
 ```
 
+
+
 ```{r}
-(14265+300)/(14244+716+145+297)
+#accuracy
+(14265+300)/(14265+713+124+300)
 ```
 
 
@@ -583,9 +589,5 @@ summary(logit_mod4)
 ```
 
 
-## do predictions with logistic model
 
-```{r}
-
-```
 
